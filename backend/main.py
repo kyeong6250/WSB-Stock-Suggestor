@@ -1,5 +1,4 @@
 import logging
-from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from aggregator import get_suggestions
 from models import SuggestionsResponse
 from reddit_client import RedditFetchError
+from runtime_paths import FRONTEND_DIR
 
 logging.basicConfig(level=logging.INFO)
 
@@ -34,6 +34,5 @@ def health():
     return {"status": "ok"}
 
 
-FRONTEND_DIR = Path(__file__).parent.parent / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")

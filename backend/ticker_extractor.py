@@ -1,8 +1,7 @@
 import csv
 import re
-from pathlib import Path
 
-DATA_DIR = Path(__file__).parent / "data"
+from runtime_paths import DATA_DIR
 
 # Words/acronyms that are technically valid tickers but are overwhelmingly used
 # as regular English words or WSB slang in this context. Filtered out unless

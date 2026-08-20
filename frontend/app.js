@@ -11,7 +11,16 @@ const els = {
   tbody: document.getElementById("table-body"),
   meta: document.getElementById("meta"),
   refresh: document.getElementById("refresh"),
-  tabs: document.querySelectorAll(".tab"),
+  tabs: document.querySelectorAll(".nav-item"),
+  statGrid: document.getElementById("stat-grid"),
+  trendingList: document.getElementById("trending-list"),
+  tableTitle: document.getElementById("table-title"),
+};
+
+const TAB_LABELS = {
+  bullish: "Bullish Tickers",
+  bearish: "Bearish Tickers",
+  all: "All Mentions",
 };
 
 function escapeHtml(str) {
@@ -89,9 +98,65 @@ function renderChart() {
     </svg>`;
 }
 
+function renderStats() {
+  const d = state.data;
+  const topBull = d.bullish[0];
+  const topBear = d.bearish[0];
+
+  const cards = [
+    { label: "Posts Analyzed", value: d.posts_analyzed },
+    { label: "Tickers Tracked", value: d.all.length },
+    {
+      label: "Top Bullish",
+      value: topBull ? escapeHtml(topBull.ticker) : "—",
+      sub: topBull ? `score ${topBull.score.toFixed(2)}` : "no signal yet",
+      cls: "bull",
+    },
+    {
+      label: "Top Bearish",
+      value: topBear ? escapeHtml(topBear.ticker) : "—",
+      sub: topBear ? `score ${topBear.score.toFixed(2)}` : "no signal yet",
+      cls: "bear",
+    },
+  ];
+
+  els.statGrid.innerHTML = cards
+    .map(
+      (c) => `
+        <div class="stat-card">
+          <div class="stat-label">${c.label}</div>
+          <div class="stat-value ${c.cls || ""}">${c.value}</div>
+          ${c.sub ? `<div class="stat-sub">${c.sub}</div>` : ""}
+        </div>`
+    )
+    .join("");
+}
+
+function renderTrending() {
+  const top = [...state.data.all].sort((a, b) => b.mentions - a.mentions).slice(0, 6);
+
+  if (top.length === 0) {
+    els.trendingList.innerHTML = `<div class="empty-note">Nothing trending yet.</div>`;
+    return;
+  }
+
+  els.trendingList.innerHTML = top
+    .map(
+      (t, i) => `
+        <div class="trending-row">
+          <span><span class="trending-rank">${i + 1}</span><span class="trending-ticker">${escapeHtml(t.ticker)}</span></span>
+          <span class="sentiment-badge sentiment-${t.sentiment_label}">${t.mentions} mentions</span>
+        </div>`
+    )
+    .join("");
+}
+
 function render() {
   if (!state.data) return;
   renderChart();
+  renderStats();
+  renderTrending();
+  els.tableTitle.textContent = TAB_LABELS[state.tab] || "Tickers";
   const rows = state.data[state.tab] || [];
 
   if (rows.length === 0) {

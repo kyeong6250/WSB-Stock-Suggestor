@@ -5,3 +5,9 @@ venv/
 .env
 *.log
 .DS_Store
+.pytest_cache/
+
+# PyInstaller build output (built locally via build_exe.py, not committed)
+build/
+dist/
+*.spec
