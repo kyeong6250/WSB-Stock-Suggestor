@@ -35,11 +35,14 @@ def main() -> None:
         str(ROOT / "assets" / "icon.ico"),
         "--paths",
         str(ROOT / "backend"),
-        # vaderSentiment loads its lexicon/emoji .txt files as package data at
-        # import time; uvicorn picks its event loop / protocol implementation
-        # via dynamic imports that PyInstaller's static analysis can't see.
+        # vaderSentiment loads its lexicon/emoji .txt files, and praw loads
+        # its own praw.ini, as package data at import time — PyInstaller's
+        # static analysis doesn't follow those. uvicorn picks its event loop
+        # / protocol implementation via dynamic imports it can't see either.
         "--collect-data",
         "vaderSentiment",
+        "--collect-data",
+        "praw",
         "--collect-all",
         "uvicorn",
         str(ROOT / "backend" / "desktop.py"),

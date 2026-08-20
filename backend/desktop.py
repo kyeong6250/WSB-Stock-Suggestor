@@ -7,7 +7,7 @@ import threading
 import time
 import tkinter
 import webbrowser
-from tkinter import messagebox
+from tkinter import messagebox, simpledialog
 
 import uvicorn
 import webview
@@ -18,37 +18,60 @@ HOST = "127.0.0.1"
 PORT = 8765
 
 
+def _write_env_with_client_id(client_id: str) -> None:
+    template = ENV_EXAMPLE_FILE.read_text(encoding="utf-8") if ENV_EXAMPLE_FILE.exists() else "REDDIT_CLIENT_ID=\n"
+    content = template.replace("REDDIT_CLIENT_ID=\n", f"REDDIT_CLIENT_ID={client_id}\n", 1)
+    ENV_FILE.write_text(content, encoding="utf-8")
+
+
+def _has_client_id() -> bool:
+    if not ENV_FILE.exists():
+        return False
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        if line.strip().startswith("REDDIT_CLIENT_ID=") and line.split("=", 1)[1].strip():
+            return True
+    return False
+
+
 def _ensure_env_file() -> bool:
     """Returns True if the app should keep starting, False if it should exit
-    so the user can fill in Reddit credentials first."""
-    if ENV_FILE.exists():
+    because the user didn't complete the one-time Reddit setup prompt."""
+    if _has_client_id():
         return True
-
-    template = ENV_EXAMPLE_FILE.read_text(encoding="utf-8") if ENV_EXAMPLE_FILE.exists() else ""
-    ENV_FILE.write_text(template, encoding="utf-8")
 
     root = tkinter.Tk()
     root.withdraw()
+
     messagebox.showinfo(
         "WSB Stock Suggestor — first-time setup",
-        "This app needs your own free Reddit API credentials to fetch posts.\n\n"
-        f"A blank config file was just created at:\n{ENV_FILE}\n\n"
-        "1. Get credentials at reddit.com/prefs/apps (choose type 'script')\n"
-        "2. Paste them into the file that's about to open\n"
-        "3. Save it and re-launch this app\n\n"
-        "Click OK to open the config file and the Reddit apps page.",
+        "This app needs a free Reddit API client ID to fetch posts (no password, "
+        "no secret to copy).\n\n"
+        "A Reddit page is about to open:\n"
+        "1. Log in, click 'create app' (bottom of page)\n"
+        "2. Choose type 'installed app'\n"
+        "3. Name it anything; for 'redirect uri' put http://localhost:8080\n"
+        "4. Click 'create app', then copy the string shown under the app's name "
+        "(that's the client ID — there's no secret to copy for this type)\n\n"
+        "Click OK, then paste that client ID into the box that follows.",
+    )
+    webbrowser.open("https://www.reddit.com/prefs/apps")
+
+    client_id = simpledialog.askstring(
+        "WSB Stock Suggestor — paste client ID",
+        "Reddit client ID:",
+        parent=root,
     )
     root.destroy()
 
-    try:
-        import os
+    if not client_id or not client_id.strip():
+        messagebox.showinfo(
+            "WSB Stock Suggestor",
+            "No client ID entered — closing. Just relaunch the app whenever you're ready to finish setup.",
+        )
+        return False
 
-        os.startfile(ENV_FILE)  # noqa: S606 - opening a local text file, not executing it
-    except Exception:
-        pass
-    webbrowser.open("https://www.reddit.com/prefs/apps")
-
-    return False
+    _write_env_with_client_id(client_id.strip())
+    return True
 
 
 def _run_server() -> None:
@@ -71,7 +94,7 @@ def main() -> None:
         width=1280,
         height=860,
         min_size=(900, 600),
-        background_color="#030014",
+        background_color="#f4f4f3",
     )
     webview.start()
 

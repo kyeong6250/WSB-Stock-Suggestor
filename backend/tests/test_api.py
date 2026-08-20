@@ -46,7 +46,7 @@ def test_suggestions_without_credentials_returns_503(monkeypatch):
     from reddit_client import RedditFetchError
 
     def raise_fetch_error():
-        raise RedditFetchError("Missing REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET")
+        raise RedditFetchError("Missing REDDIT_CLIENT_ID")
 
     monkeypatch.setattr(aggregator, "fetch_posts", raise_fetch_error)
 

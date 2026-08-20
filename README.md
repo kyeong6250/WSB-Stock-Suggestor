@@ -24,11 +24,15 @@ this as an entertaining lens on retail chatter, not a trading signal.
 
 ### 1. Create a Reddit API app
 
+Only one value is needed — no client secret, no login flow at runtime. This
+uses Reddit's "installed app" OAuth type, which is a public/non-confidential
+client meant to run unattended in read-only mode.
+
 1. Go to <https://www.reddit.com/prefs/apps> (log into your Reddit account first).
 2. Click **create app** / **create another app** at the bottom.
-3. Choose type **script**.
-4. Name: anything (e.g. `wsb-stock-suggestor`). Redirect URI: `http://localhost:8000` (required but unused).
-5. After creating it, copy the **client ID** (string under the app name) and **secret**.
+3. Choose type **installed app** (not "script" — that type requires a secret).
+4. Name: anything (e.g. `wsb-stock-suggestor`). Redirect URI: `http://localhost:8080` (required by the form, unused by this app).
+5. Click **create app**, then copy the string shown under the app's name — that's the client ID.
 
 ### 2. Configure environment
 
@@ -40,7 +44,6 @@ Fill in `.env`:
 
 ```
 REDDIT_CLIENT_ID=your_client_id
-REDDIT_CLIENT_SECRET=your_client_secret
 REDDIT_USER_AGENT=wsb-stock-suggestor by u/your_reddit_username
 ```
 
@@ -75,12 +78,12 @@ python build_exe.py
 This produces `dist/WSB-Stock-Suggestor.exe` (a single-file executable — no
 Python install required to run it).
 
-**First launch:** since the exe has no credentials baked in, it creates a
-blank `.env` next to itself, opens it in Notepad plus the Reddit apps page in
-your browser, and asks you to fill in your `REDDIT_CLIENT_ID` /
-`REDDIT_CLIENT_SECRET` (see [Setup](#setup) above) and relaunch. After that,
-double-clicking the exe just opens the dashboard directly — the `.env` next
-to the exe persists between launches.
+**First launch:** since the exe has no credentials baked in, it opens the
+Reddit apps page in your browser and pops up a single prompt asking you to
+paste a client ID (see [Setup](#setup) above for how to get one — it only
+takes copying one string, no secret). Paste it, hit OK, and the dashboard
+opens immediately — no relaunch needed. The `.env` it writes next to the exe
+persists between launches, so this only happens once.
 
 ## API
 
@@ -114,8 +117,8 @@ build_exe.py           PyInstaller build script for the desktop .exe
 Edit `.env`:
 
 - `SUBREDDIT` — analyze a different subreddit.
-- `POST_LISTING` — `hot`, `new`, or `top`.
-- `POST_LIMIT` — how many posts to pull per refresh.
+- `POST_LISTING` — `hot`, `new`, `top`, or `rising`. Comma-separate several (e.g. `hot,rising`, the default) to merge them, deduplicated — `hot` alone skews toward posts that have been popular for a while, so mixing in `rising` keeps the ranking from leaning entirely on stale threads.
+- `POST_LIMIT` — how many posts to pull per refresh, per listing.
 - `COMMENTS_PER_POST` — how many top-level comments to analyze per post (0 = titles/selftext only, faster).
 - `CACHE_TTL_SECONDS` — how long results are cached before re-fetching.
 

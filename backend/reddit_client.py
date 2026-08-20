@@ -13,15 +13,18 @@ class RedditFetchError(RuntimeError):
 
 
 def _make_reddit() -> praw.Reddit:
-    if not settings.reddit_client_id or not settings.reddit_client_secret:
+    if not settings.reddit_client_id:
         raise RedditFetchError(
-            "Missing REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET. "
-            "Copy .env.example to .env and fill in credentials from "
-            "https://www.reddit.com/prefs/apps"
+            "Missing REDDIT_CLIENT_ID. Copy .env.example to .env and fill in a client ID "
+            "from an 'installed app' at https://www.reddit.com/prefs/apps"
         )
+    # An "installed app" Reddit client has no secret (it's a public/non-confidential
+    # client), which lets this run fully unattended in read-only mode: no login,
+    # no browser step, no secret to leak if this ever ships with a bundled default
+    # client_id. client_secret must be None (not "") for PRAW to use that flow.
     return praw.Reddit(
         client_id=settings.reddit_client_id,
-        client_secret=settings.reddit_client_secret,
+        client_secret=None,
         user_agent=settings.reddit_user_agent,
         check_for_updates=False,
     )
@@ -53,23 +56,35 @@ def _submission_to_dict(submission: Submission, comments_per_post: int) -> dict:
     }
 
 
+VALID_LISTINGS = ("hot", "new", "top", "rising")
+
+
+def _parse_listings(post_listing: str) -> list[str]:
+    # POST_LISTING can name multiple listings, e.g. "hot,rising" — "hot" alone
+    # skews toward posts that have been popular for a while; mixing in
+    # "rising" (posts gaining traction right now) keeps the ranking from
+    # leaning entirely on stale-but-still-hot threads.
+    names = [n.strip().lower() for n in post_listing.split(",") if n.strip()]
+    valid = [n for n in names if n in VALID_LISTINGS]
+    return valid or ["hot"]
+
+
 def fetch_posts() -> list[dict]:
     """Fetch posts (and their top comments) from the configured subreddit."""
     reddit = _make_reddit()
     subreddit = reddit.subreddit(settings.subreddit)
+    listing_names = _parse_listings(settings.post_listing)
 
-    listing_fn = {
-        "hot": subreddit.hot,
-        "new": subreddit.new,
-        "top": subreddit.top,
-    }.get(settings.post_listing, subreddit.hot)
-
+    seen_ids: set[str] = set()
     posts = []
     try:
-        for submission in listing_fn(limit=settings.post_limit):
-            if submission.stickied:
-                continue
-            posts.append(_submission_to_dict(submission, settings.comments_per_post))
+        for name in listing_names:
+            listing_fn = getattr(subreddit, name)
+            for submission in listing_fn(limit=settings.post_limit):
+                if submission.stickied or submission.id in seen_ids:
+                    continue
+                seen_ids.add(submission.id)
+                posts.append(_submission_to_dict(submission, settings.comments_per_post))
     except Exception as exc:
         raise RedditFetchError(f"Failed to fetch posts from r/{settings.subreddit}: {exc}") from exc
 
