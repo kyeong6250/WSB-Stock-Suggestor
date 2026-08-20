@@ -25,9 +25,9 @@ _CASHTAG_RE = re.compile(r"\$([A-Za-z]{1,5})\b")
 _BARE_RE = re.compile(r"\b([A-Z]{2,5})\b")
 
 
-def _load_known_tickers() -> dict[str, str]:
+def _load_tickers(*filenames: str) -> dict[str, str]:
     tickers: dict[str, str] = {}
-    for filename in ("sp500.csv", "extra_tickers.csv"):
+    for filename in filenames:
         path = DATA_DIR / filename
         with path.open(newline="", encoding="utf-8") as f:
             for row in csv.DictReader(f):
@@ -38,11 +38,20 @@ def _load_known_tickers() -> dict[str, str]:
     return tickers
 
 
-KNOWN_TICKERS: dict[str, str] = _load_known_tickers()
+# Trusted set (S&P 500 + hand-picked WSB favorites) used for *bare* uppercase
+# word matching, e.g. "GME to the moon" — kept small and curated because bare
+# words carry no explicit signal, so a bigger universe here just means more
+# false positives from ordinary all-caps chatter.
+KNOWN_TICKERS: dict[str, str] = _load_tickers("sp500.csv", "extra_tickers.csv")
+
+# Full NASDAQ/NYSE/AMEX common-stock universe (~5,700 symbols), used only for
+# explicit "$TICKER" cashtags — the "$" is unambiguous intent, so it's safe to
+# recognize small/micro-cap tickers here that aren't in the trusted set above.
+ALL_TICKERS: dict[str, str] = {**_load_tickers("all_tickers.csv"), **KNOWN_TICKERS}
 
 
 def company_name(ticker: str) -> str:
-    return KNOWN_TICKERS.get(ticker, ticker)
+    return ALL_TICKERS.get(ticker, ticker)
 
 
 def extract_tickers(text: str) -> set[str]:
@@ -54,7 +63,7 @@ def extract_tickers(text: str) -> set[str]:
 
     for match in _CASHTAG_RE.finditer(text):
         symbol = match.group(1).upper()
-        if symbol in KNOWN_TICKERS:
+        if symbol in ALL_TICKERS:
             found.add(symbol)
 
     for match in _BARE_RE.finditer(text):

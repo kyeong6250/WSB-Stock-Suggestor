@@ -1,4 +1,4 @@
-from ticker_extractor import extract_tickers
+from ticker_extractor import ALL_TICKERS, KNOWN_TICKERS, extract_tickers
 
 
 def test_extracts_bare_known_tickers():
@@ -29,3 +29,17 @@ def test_empty_text():
 
 def test_multiple_tickers_in_one_blob():
     assert extract_tickers("DD on AAPL and NVDA, both undervalued") == {"AAPL", "NVDA"}
+
+
+def test_full_market_universe_is_larger_than_trusted_set():
+    assert len(ALL_TICKERS) > len(KNOWN_TICKERS)
+
+
+def test_small_cap_cashtag_not_in_trusted_set_is_still_recognized():
+    small_cap = next(sym for sym in ALL_TICKERS if sym not in KNOWN_TICKERS)
+    assert extract_tickers(f"anyone in ${small_cap}?") == {small_cap}
+
+
+def test_small_cap_bare_word_not_in_trusted_set_is_ignored():
+    small_cap = next(sym for sym in ALL_TICKERS if sym not in KNOWN_TICKERS)
+    assert extract_tickers(f"anyone in {small_cap}?") == set()

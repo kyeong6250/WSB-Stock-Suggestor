@@ -1,11 +1,12 @@
-from aggregator import _build_suggestions
+from aggregator import _build_suggestions, _post_weight
 
 
-def _post(post_id, title, score, blobs):
+def _post(post_id, title, score, blobs, flair=None):
     return {
         "id": post_id,
         "title": title,
         "score": score,
+        "flair": flair,
         "permalink": f"https://reddit.com/r/wsb/{post_id}",
         "text_blobs": blobs,
     }
@@ -51,3 +52,24 @@ def test_no_posts_returns_empty_result():
     assert result.bullish == []
     assert result.bearish == []
     assert result.all == []
+
+
+def test_dd_flair_weighs_more_than_meme_flair():
+    dd_weight = _post_weight(100, "DD")
+    meme_weight = _post_weight(100, "Meme")
+    plain_weight = _post_weight(100, None)
+    assert dd_weight > plain_weight > meme_weight
+
+
+def test_flair_is_case_insensitive():
+    assert _post_weight(100, "dd") == _post_weight(100, "DD")
+
+
+def test_meme_flaired_post_pulls_score_toward_its_sentiment_less():
+    posts_with_meme = [
+        _post("1", "big bullish DD", 500, ["AAPL undervalued, bullish, buying calls"], flair="DD"),
+        _post("2", "meme dump", 500, ["AAPL puts, overvalued, crashing"], flair="Meme"),
+    ]
+    result = _build_suggestions(posts_with_meme)
+    aapl = next(t for t in result.all if t.ticker == "AAPL")
+    assert aapl.avg_sentiment > 0

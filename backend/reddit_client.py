@@ -46,6 +46,7 @@ def _submission_to_dict(submission: Submission, comments_per_post: int) -> dict:
         "title": submission.title,
         "score": submission.score,
         "num_comments": submission.num_comments,
+        "flair": submission.link_flair_text,
         "permalink": f"https://reddit.com{submission.permalink}",
         "created_utc": submission.created_utc,
         "text_blobs": text_blobs,

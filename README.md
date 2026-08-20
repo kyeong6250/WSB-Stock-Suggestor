@@ -12,10 +12,12 @@ this as an entertaining lens on retail chatter, not a trading signal.
 
 ## How it works
 
-1. **Fetch** — pulls the top posts (and their top comments) from r/wallstreetbets via the official Reddit API (PRAW).
-2. **Extract tickers** — finds `$TICKER` cashtags and bare uppercase symbols, checked against a known-ticker list (S&P 500 + popular WSB small-caps/meme stocks) and filtered against a blocklist of common English words/acronyms that collide with real tickers (e.g. `DD`, `YOLO`, `IT`, `ALL`).
+1. **Fetch** — pulls the top posts (and their top comments) from r/wallstreetbets via the official Reddit API (PRAW), including each post's flair (DD, Meme, YOLO, etc.).
+2. **Extract tickers** — two tiers, to balance recall against false positives:
+   - **Bare uppercase words** ("GME to the moon") are only matched against a curated, trusted list (S&P 500 + hand-picked WSB favorites) and filtered against a blocklist of common English words/acronyms that collide with real tickers (e.g. `DD`, `YOLO`, `IT`, `ALL`).
+   - **`$TICKER` cashtags** are explicit intent, so they're checked against the full ~5,700-symbol NASDAQ/NYSE/AMEX common-stock universe — this is what catches small/micro-caps outside the trusted list.
 3. **Score sentiment** — runs VADER sentiment analysis, extended with a WSB slang/emoji lexicon (🚀, 💎🙌, "bagholder", "tendies", "diamond hands", etc.).
-4. **Aggregate** — combines mention count and upvote-weighted average sentiment per ticker into a single score, ranked into Bullish / Bearish / All tabs.
+4. **Aggregate** — combines mention count and a weighted average sentiment per ticker into a single score, ranked into Bullish / Bearish / All tabs. Weighting favors higher-upvoted posts (log-dampened) and analysis-flaired posts ("DD", "Discussion", "Fundamentals"), while down-weighting high-noise flairs ("Meme", "Shitpost").
 5. Results are cached for `CACHE_TTL_SECONDS` (default 15 min) to stay within Reddit API rate limits.
 
 ## Setup
@@ -73,7 +75,7 @@ backend/
   sentiment.py          VADER + WSB slang/emoji lexicon
   aggregator.py         Combines mentions + sentiment into ranked scores, caches results
   models.py             Pydantic response models
-  data/                 S&P 500 + extra WSB-favorite ticker reference lists
+  data/                 S&P 500 + WSB-favorites (trusted) and full-market (cashtag-only) ticker lists
 frontend/
   index.html / style.css / app.js   Static dashboard (no build step)
 ```

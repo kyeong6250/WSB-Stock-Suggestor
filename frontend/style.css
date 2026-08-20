@@ -57,6 +57,20 @@ body {
   margin: 0;
 }
 
+.fun-banner {
+  background: rgba(230, 103, 103, 0.08);
+  border: 1px solid rgba(230, 103, 103, 0.35);
+  color: var(--text);
+  font-size: 12.5px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-top: 24px;
+}
+
+.fun-banner strong {
+  color: var(--bear);
+}
+
 .toolbar {
   display: flex;
   justify-content: space-between;

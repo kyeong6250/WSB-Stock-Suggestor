@@ -10,6 +10,24 @@ from ticker_extractor import company_name, extract_tickers
 
 MAX_SAMPLE_POSTS = 3
 
+# WSB post flairs carry a strong reliability signal: "DD" and similar
+# analysis-flaired posts are worth more than upvotes alone suggest, while
+# "Meme"/"Shitpost" posts are high-volume noise that shouldn't drive rankings
+# as hard as genuine discussion. Unrecognized/missing flairs get 1.0.
+FLAIR_WEIGHTS = {
+    "dd": 1.4,
+    "fundamentals": 1.3,
+    "discussion": 1.2,
+    "news": 1.2,
+    "technical analysis": 1.2,
+    "chart": 0.9,
+    "yolo": 0.9,
+    "gain": 0.8,
+    "loss": 0.8,
+    "meme": 0.4,
+    "shitpost": 0.3,
+}
+
 
 @dataclass
 class _TickerStats:
@@ -20,10 +38,12 @@ class _TickerStats:
     sample_posts: list[SamplePost] = field(default_factory=list)
 
 
-def _post_weight(post_score: int) -> float:
+def _post_weight(post_score: int, flair: str | None) -> float:
     # log-dampen upvotes so a single viral post can't singlehandedly dominate,
     # with a floor so a 0/negative-score post still counts a little.
-    return math.log10(max(post_score, 0) + 10)
+    weight = math.log10(max(post_score, 0) + 10)
+    flair_multiplier = FLAIR_WEIGHTS.get((flair or "").strip().lower(), 1.0)
+    return weight * flair_multiplier
 
 
 def _sentiment_label(score: float) -> str:
@@ -38,7 +58,7 @@ def _build_suggestions(posts: list[dict]) -> SuggestionsResponse:
     stats: dict[str, _TickerStats] = {}
 
     for post in posts:
-        weight = _post_weight(post["score"])
+        weight = _post_weight(post["score"], post.get("flair"))
         for blob in post["text_blobs"]:
             tickers = extract_tickers(blob)
             if not tickers:
