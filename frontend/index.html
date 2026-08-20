@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WSB Stock Suggestor</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%80%3C/text%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <h1>WSB Stock Suggestor <span class="chip">r/wallstreetbets</span></h1>
+      <p class="subtitle">Ranks tickers by mention buzz + sentiment across recent WSB posts &amp; comments.</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="toolbar">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-tab="bullish">🐂 Bullish</button>
+        <button class="tab" data-tab="bearish">🐻 Bearish</button>
+        <button class="tab" data-tab="all">📋 All Mentions</button>
+      </div>
+      <div class="toolbar-right">
+        <span id="meta" class="meta"></span>
+        <button id="refresh" class="refresh-btn">Refresh</button>
+      </div>
+    </div>
+
+    <section class="chart-section" id="chart-section">
+      <div class="chart-header">
+        <span class="chart-title">Top Movers by Score</span>
+        <div class="chart-legend">
+          <span><span class="swatch bull"></span>Bullish</span>
+          <span><span class="swatch bear"></span>Bearish</span>
+        </div>
+      </div>
+      <div id="chart-container"></div>
+    </section>
+
+    <div id="status" class="status"></div>
+
+    <table id="table" class="table hidden">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ticker</th>
+          <th>Company</th>
+          <th>Mentions</th>
+          <th>Sentiment</th>
+          <th>Score</th>
+          <th>Top Posts</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+
+    <footer class="disclaimer">
+      <strong>Not financial advice.</strong> This is a sentiment/mention-frequency ranking of r/wallstreetbets
+      chatter for educational and portfolio purposes only &mdash; it is not a prediction of future price movement.
+      WSB sentiment is notoriously unreliable (and often ironic). Do your own research.
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
