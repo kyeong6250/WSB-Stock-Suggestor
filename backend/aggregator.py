@@ -3,8 +3,8 @@ import time
 from dataclasses import dataclass, field
 
 from config import settings
+from data_source import fetch_posts
 from models import FlairCount, SamplePost, SuggestionsResponse, TickerSuggestion
-from reddit_client import fetch_posts
 from sentiment import compound_score
 from ticker_extractor import company_name, extract_tickers
 

@@ -4,12 +4,9 @@ import praw
 from praw.models import Submission
 
 from config import settings
+from errors import RedditFetchError
 
 logger = logging.getLogger(__name__)
-
-
-class RedditFetchError(RuntimeError):
-    pass
 
 
 def _make_reddit() -> praw.Reddit:

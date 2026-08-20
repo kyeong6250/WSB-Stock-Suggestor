@@ -5,8 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from aggregator import get_suggestions
+from errors import RedditFetchError
 from models import SuggestionsResponse
-from reddit_client import RedditFetchError
 from runtime_paths import FRONTEND_DIR
 
 logging.basicConfig(level=logging.INFO)
