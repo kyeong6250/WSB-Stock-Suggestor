@@ -5,3 +5,6 @@ __pycache__/
 .git/
 .github/
 backend/tests/
+build/
+dist/
+assets/

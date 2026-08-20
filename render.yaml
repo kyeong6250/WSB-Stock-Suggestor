@@ -1,0 +1,9 @@
+services:
+  - name: wsb-stock-suggestor
+    type: web
+    runtime: docker
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATA_SOURCE
+        value: arctic_shift

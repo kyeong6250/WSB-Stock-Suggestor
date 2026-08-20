@@ -13,6 +13,8 @@ this as an entertaining lens on retail chatter, not a trading signal.
 **Needs zero setup by default** — no Reddit account, no API key, no login.
 See [Data sources](#data-sources) for why and how.
 
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kyeong6250/WSB-Stock-Suggestor)
+
 ## How it works
 
 1. **Fetch** — pulls recent posts (and their top comments) from r/wallstreetbets, including each post's flair (DD, Meme, YOLO, etc.). See [Data sources](#data-sources) for where this data actually comes from.
@@ -60,6 +62,22 @@ uvicorn main:app --reload --port 8000
 ```
 
 Open <http://localhost:8000> in your browser — no `.env` needed at all for the default data source.
+
+## Deploy (live web version)
+
+The .exe below is Windows-only and, being an unsigned executable, triggers a
+SmartScreen warning for anyone downloading it — not something to hand a
+stranger a link to. The web version has neither problem: it's just a page.
+
+Click the badge above ("Deploy to Render"), or manually:
+
+1. Fork or use this repo directly.
+2. On [Render](https://render.com), **New +** → **Blueprint** → connect this repo. Render reads [`render.yaml`](render.yaml) and sets everything up automatically (free tier, no credit card).
+3. Deploy. You'll get a public URL like `https://wsb-stock-suggestor.onrender.com`.
+
+Render's free tier spins the service down after 15 minutes of no traffic —
+the first request after that takes ~30-60s to wake back up, then it's normal
+speed. Fine for a portfolio link, not for anything that needs to always be instantly warm.
 
 ## Desktop app (Windows .exe)
 
