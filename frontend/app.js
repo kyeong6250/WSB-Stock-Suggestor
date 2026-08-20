@@ -14,6 +14,7 @@ const els = {
   tabs: document.querySelectorAll(".nav-item"),
   statGrid: document.getElementById("stat-grid"),
   trendingList: document.getElementById("trending-list"),
+  flairMix: document.getElementById("flair-mix"),
   tableTitle: document.getElementById("table-title"),
 };
 
@@ -22,6 +23,36 @@ const TAB_LABELS = {
   bearish: "Bearish Tickers",
   all: "All Mentions",
 };
+
+// Mirrors the backend's own flair-reliability weighting (see aggregator.py
+// FLAIR_WEIGHTS) so the "Post Mix" chart's colors carry the same meaning as
+// the ranking algorithm: blue = higher-signal analysis, orange = noise.
+const FLAIR_COLORS = {
+  dd: "#2f6fed",
+  discussion: "#4d84ef",
+  fundamentals: "#3f7ef2",
+  news: "#6a97f1",
+  "technical analysis": "#6a97f1",
+  meme: "#c65d2e",
+  shitpost: "#d4784f",
+  yolo: "#8a8a86",
+  gain: "#8a8a86",
+  loss: "#8a8a86",
+  chart: "#8a8a86",
+};
+const FLAIR_COLOR_FALLBACK = "#c7c6c1";
+
+function flairColor(label) {
+  return FLAIR_COLORS[label.toLowerCase()] || FLAIR_COLOR_FALLBACK;
+}
+
+function sentimentBucketLabel(v) {
+  if (v > 0.25) return "Bullish";
+  if (v > 0.08) return "Mildly bullish";
+  if (v < -0.25) return "Bearish";
+  if (v < -0.08) return "Mildly bearish";
+  return "Mixed / neutral";
+}
 
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -102,10 +133,22 @@ function renderStats() {
   const d = state.data;
   const topBull = d.bullish[0];
   const topBear = d.bearish[0];
+  const overall = d.overall_sentiment;
 
   const cards = [
     { label: "Posts Analyzed", value: d.posts_analyzed },
     { label: "Tickers Tracked", value: d.all.length },
+    {
+      label: "Overall Sentiment",
+      value: fmtSentiment(overall),
+      sub: sentimentBucketLabel(overall),
+      cls: overall > 0.08 ? "bull" : overall < -0.08 ? "bear" : "",
+    },
+    {
+      label: "High-Signal Posts",
+      value: `${d.high_quality_post_pct.toFixed(0)}%`,
+      sub: "flaired DD / Discussion / News",
+    },
     {
       label: "Top Bullish",
       value: topBull ? escapeHtml(topBull.ticker) : "—",
@@ -132,6 +175,36 @@ function renderStats() {
     .join("");
 }
 
+function renderFlairMix() {
+  const breakdown = state.data.flair_breakdown;
+
+  if (!breakdown || breakdown.length === 0) {
+    els.flairMix.innerHTML = `<div class="empty-note">No post-flair data yet.</div>`;
+    return;
+  }
+
+  const total = breakdown.reduce((sum, f) => sum + f.count, 0);
+
+  const bar = breakdown
+    .map((f) => {
+      const pct = total ? (100 * f.count) / total : 0;
+      return `<span class="flair-mix-segment" style="width:${pct.toFixed(2)}%;background:${flairColor(f.flair)}" title="${escapeHtml(f.flair)}: ${f.count}"></span>`;
+    })
+    .join("");
+
+  const rows = breakdown
+    .map(
+      (f) => `
+        <div class="flair-row">
+          <span class="flair-row-label"><span class="flair-dot" style="background:${flairColor(f.flair)}"></span>${escapeHtml(f.flair)}</span>
+          <span class="flair-row-count">${f.count}</span>
+        </div>`
+    )
+    .join("");
+
+  els.flairMix.innerHTML = `<div class="flair-mix-bar">${bar}</div><div class="flair-list">${rows}</div>`;
+}
+
 function renderTrending() {
   const top = [...state.data.all].sort((a, b) => b.mentions - a.mentions).slice(0, 6);
 
@@ -156,6 +229,7 @@ function render() {
   renderChart();
   renderStats();
   renderTrending();
+  renderFlairMix();
   els.tableTitle.textContent = TAB_LABELS[state.tab] || "Tickers";
   const rows = state.data[state.tab] || [];
 

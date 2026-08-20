@@ -17,10 +17,18 @@ class TickerSuggestion(BaseModel):
     sample_posts: list[SamplePost]
 
 
+class FlairCount(BaseModel):
+    flair: str
+    count: int
+
+
 class SuggestionsResponse(BaseModel):
     subreddit: str
     generated_at: float
     posts_analyzed: int
+    overall_sentiment: float
+    high_quality_post_pct: float
+    flair_breakdown: list[FlairCount]
     bullish: list[TickerSuggestion]
     bearish: list[TickerSuggestion]
     all: list[TickerSuggestion]

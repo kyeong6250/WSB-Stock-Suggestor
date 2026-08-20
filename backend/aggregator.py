@@ -3,12 +3,13 @@ import time
 from dataclasses import dataclass, field
 
 from config import settings
-from models import SamplePost, SuggestionsResponse, TickerSuggestion
+from models import FlairCount, SamplePost, SuggestionsResponse, TickerSuggestion
 from reddit_client import fetch_posts
 from sentiment import compound_score
 from ticker_extractor import company_name, extract_tickers
 
 MAX_SAMPLE_POSTS = 3
+FLAIR_BREAKDOWN_TOP_N = 6
 
 # WSB post flairs carry a strong reliability signal: "DD" and similar
 # analysis-flaired posts are worth more than upvotes alone suggest, while
@@ -27,6 +28,10 @@ FLAIR_WEIGHTS = {
     "meme": 0.4,
     "shitpost": 0.3,
 }
+
+# Flairs treated as genuine analysis rather than noise, used for the
+# "high quality post" transparency stat shown in the dashboard.
+HIGH_QUALITY_FLAIRS = {"dd", "fundamentals", "discussion", "news", "technical analysis"}
 
 
 @dataclass
@@ -52,6 +57,29 @@ def _sentiment_label(score: float) -> str:
     if score < -0.15:
         return "bearish"
     return "neutral"
+
+
+def _flair_breakdown(posts: list[dict]) -> list[FlairCount]:
+    counts: dict[str, int] = {}
+    for post in posts:
+        flair = (post.get("flair") or "").strip() or "No flair"
+        counts[flair] = counts.get(flair, 0) + 1
+
+    ranked = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)
+    top = ranked[:FLAIR_BREAKDOWN_TOP_N]
+    other_count = sum(count for _, count in ranked[FLAIR_BREAKDOWN_TOP_N:])
+
+    result = [FlairCount(flair=flair, count=count) for flair, count in top]
+    if other_count:
+        result.append(FlairCount(flair="Other", count=other_count))
+    return result
+
+
+def _high_quality_post_pct(posts: list[dict]) -> float:
+    if not posts:
+        return 0.0
+    high_quality = sum(1 for post in posts if (post.get("flair") or "").strip().lower() in HIGH_QUALITY_FLAIRS)
+    return round(100 * high_quality / len(posts), 1)
 
 
 def _build_suggestions(posts: list[dict]) -> SuggestionsResponse:
@@ -97,10 +125,20 @@ def _build_suggestions(posts: list[dict]) -> SuggestionsResponse:
     )
     bearish = sorted([t for t in suggestions if t.score < 0], key=lambda t: t.score)
 
+    total_mentions = sum(t.mentions for t in suggestions)
+    overall_sentiment = (
+        round(sum(t.avg_sentiment * t.mentions for t in suggestions) / total_mentions, 4)
+        if total_mentions
+        else 0.0
+    )
+
     return SuggestionsResponse(
         subreddit=settings.subreddit,
         generated_at=time.time(),
         posts_analyzed=len(posts),
+        overall_sentiment=overall_sentiment,
+        high_quality_post_pct=_high_quality_post_pct(posts),
+        flair_breakdown=_flair_breakdown(posts),
         bullish=bullish[:25],
         bearish=bearish[:25],
         all=all_sorted[:100],

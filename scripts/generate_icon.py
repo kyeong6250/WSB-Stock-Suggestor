@@ -2,15 +2,15 @@
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 OUT_DIR = Path(__file__).parent.parent / "assets"
 OUT_DIR.mkdir(exist_ok=True)
 
 SIZE = 256
-BG = (3, 0, 20, 255)  # matches --bg in style.css
-ACCENT = (204, 255, 0, 255)  # matches --accent
-BULL = (57, 135, 229, 255)  # matches --bull
+SURFACE = (255, 255, 255, 255)  # matches --surface in style.css
+BORDER = (230, 229, 224, 255)  # neutral, close to --border over white
+ACCENT = (47, 111, 237, 255)  # matches --accent / --bull
 
 
 def build_icon() -> Image.Image:
@@ -18,24 +18,20 @@ def build_icon() -> Image.Image:
     draw = ImageDraw.Draw(img)
 
     margin = 8
-    draw.rounded_rectangle([margin, margin, SIZE - margin, SIZE - margin], radius=48, fill=BG)
+    draw.rounded_rectangle([margin, margin, SIZE - margin, SIZE - margin], radius=52, fill=SURFACE, outline=BORDER, width=4)
 
-    draw.ellipse([margin, margin, SIZE - margin, SIZE - margin], outline=ACCENT, width=10)
+    # Uptrend line with an arrowhead, echoing the in-app sidebar brand mark.
+    line_width = 18
+    points = [(64, 176), (108, 132), (140, 164), (196, 96)]
+    draw.line(points, fill=ACCENT, width=line_width, joint="curve")
+    for p in points:
+        draw.ellipse([p[0] - line_width / 2, p[1] - line_width / 2, p[0] + line_width / 2, p[1] + line_width / 2], fill=ACCENT)
 
-    # Simple rocket silhouette: triangle nose + body + fins, in the accent lime.
-    cx = SIZE // 2
-    draw.polygon(
-        [
-            (cx, 46),
-            (cx - 34, 150),
-            (cx + 34, 150),
-        ],
-        fill=ACCENT,
-    )
-    draw.rounded_rectangle([cx - 34, 130, cx + 34, 200], radius=18, fill=ACCENT)
-    draw.polygon([(cx - 34, 170), (cx - 62, 210), (cx - 34, 200)], fill=BULL)
-    draw.polygon([(cx + 34, 170), (cx + 62, 210), (cx + 34, 200)], fill=BULL)
-    draw.ellipse([cx - 14, 96, cx + 14, 124], fill=BG)
+    # Arrowhead flag at the top-right end of the line.
+    draw.line([(160, 96), (196, 96)], fill=ACCENT, width=line_width, joint="curve")
+    draw.line([(196, 96), (196, 132)], fill=ACCENT, width=line_width, joint="curve")
+    for p in [(160, 96), (196, 96), (196, 132)]:
+        draw.ellipse([p[0] - line_width / 2, p[1] - line_width / 2, p[0] + line_width / 2, p[1] + line_width / 2], fill=ACCENT)
 
     return img
 

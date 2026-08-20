@@ -52,6 +52,45 @@ def test_no_posts_returns_empty_result():
     assert result.bullish == []
     assert result.bearish == []
     assert result.all == []
+    assert result.overall_sentiment == 0.0
+    assert result.high_quality_post_pct == 0.0
+    assert result.flair_breakdown == []
+
+
+def test_overall_sentiment_is_mentions_weighted():
+    posts = [
+        _post("1", "very bullish, mentioned a lot", 500, ["GME undervalued bullish"] * 3),
+        _post("2", "slightly bearish, mentioned once", 500, ["TSLA slightly overvalued"]),
+    ]
+    result = _build_suggestions(posts)
+    # GME has 3x the mentions of TSLA and is more strongly positive, so the
+    # mentions-weighted overall sentiment should skew positive.
+    assert result.overall_sentiment > 0
+
+
+def test_flair_breakdown_counts_posts_by_flair_with_no_flair_bucket():
+    posts = [
+        _post("1", "a", 10, ["AAPL"], flair="DD"),
+        _post("2", "b", 10, ["AAPL"], flair="DD"),
+        _post("3", "c", 10, ["AAPL"], flair="Meme"),
+        _post("4", "d", 10, ["AAPL"], flair=None),
+    ]
+    result = _build_suggestions(posts)
+    breakdown = {fc.flair: fc.count for fc in result.flair_breakdown}
+    assert breakdown["DD"] == 2
+    assert breakdown["Meme"] == 1
+    assert breakdown["No flair"] == 1
+
+
+def test_high_quality_post_pct():
+    posts = [
+        _post("1", "a", 10, ["AAPL"], flair="DD"),
+        _post("2", "b", 10, ["AAPL"], flair="Discussion"),
+        _post("3", "c", 10, ["AAPL"], flair="Meme"),
+        _post("4", "d", 10, ["AAPL"], flair="Meme"),
+    ]
+    result = _build_suggestions(posts)
+    assert result.high_quality_post_pct == 50.0
 
 
 def test_dd_flair_weighs_more_than_meme_flair():

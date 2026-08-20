@@ -4,41 +4,51 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WSB Stock Suggestor</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9A%80%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f6fed' stroke-width='2.5'%3E%3Cpath d='M3 17l6-6 4 4 8-8'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
-        <span class="brand-mark">🚀</span>
-        <span class="brand-name">WSB Suggestor</span>
+        <svg class="brand-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 17l6-6 4 4 8-8" />
+          <path d="M15 7h6v6" />
+        </svg>
+        <span>WSB Suggestor</span>
       </div>
 
       <nav class="nav" role="tablist">
-        <button class="nav-item active" data-tab="bullish"><span class="nav-icon">🐂</span>Bullish</button>
-        <button class="nav-item" data-tab="bearish"><span class="nav-icon">🐻</span>Bearish</button>
-        <button class="nav-item" data-tab="all"><span class="nav-icon">📋</span>All Mentions</button>
+        <button class="nav-item active" data-tab="bullish">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15l6-8 4 5 6-9" /></svg>
+          Bullish
+        </button>
+        <button class="nav-item" data-tab="bearish">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9l6 8 4-5 6 9" /></svg>
+          Bearish
+        </button>
+        <button class="nav-item" data-tab="all">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg>
+          All Mentions
+        </button>
       </nav>
 
       <div class="sidebar-spacer"></div>
 
       <div class="sidebar-footer">
-        <button id="refresh" class="refresh-btn">↻ Refresh</button>
+        <button id="refresh" class="refresh-btn">Refresh</button>
         <span id="meta" class="meta"></span>
       </div>
     </aside>
 
     <main class="content">
       <header class="top-bar">
-        <div>
-          <h1>Sentiment Dashboard</h1>
-          <p class="subtitle">r/wallstreetbets &middot; ranked by mention buzz + sentiment</p>
-        </div>
+        <h1>Sentiment Dashboard</h1>
+        <p class="subtitle">r/wallstreetbets &middot; ranked by mention buzz + sentiment</p>
       </header>
 
-      <div class="fun-banner">
-        🎢 <strong>Not financial advice.</strong> This just counts rockets and diamond-hand emojis on WSB &mdash; it's a for-fun sentiment toy, not a trading signal. Please don't YOLO your rent money based on a bar chart.
+      <div class="disclaimer-bar">
+        <strong>Not financial advice.</strong> This measures social sentiment on r/wallstreetbets, not company fundamentals or price forecasts.
       </div>
 
       <section class="stat-grid" id="stat-grid"></section>
@@ -60,6 +70,13 @@
             <span class="panel-title">Trending Tickers</span>
           </div>
           <div id="trending-list" class="trending-list"></div>
+        </div>
+
+        <div class="panel mix-panel">
+          <div class="panel-header">
+            <span class="panel-title">Post Mix</span>
+          </div>
+          <div id="flair-mix"></div>
         </div>
       </section>
 
@@ -89,9 +106,9 @@
       </section>
 
       <footer class="disclaimer">
-        <strong>Not financial advice.</strong> This is a sentiment/mention-frequency ranking of r/wallstreetbets
-        chatter for educational and portfolio purposes only &mdash; it is not a prediction of future price movement.
-        WSB sentiment is notoriously unreliable (and often ironic). Do your own research.
+        This is a sentiment/mention-frequency ranking of r/wallstreetbets chatter for educational and portfolio
+        purposes only &mdash; it is not a prediction of future price movement. Do your own research before making
+        any financial decision.
       </footer>
     </main>
   </div>
