@@ -42,6 +42,15 @@ def test_frontend_is_served():
     assert "WSB Stock Suggestor" in res.text
 
 
+def test_responses_are_never_cached_by_an_intermediary():
+    # A CDN in front of this app (e.g. Render's) can cache a bad response
+    # from a single cold-start request and serve it to every visitor after
+    # — every response must explicitly forbid that, static assets included.
+    for path in ["/api/health", "/", "/style.css", "/app.js"]:
+        res = client.get(path)
+        assert res.headers.get("cache-control") == "no-store", path
+
+
 def test_suggestions_without_credentials_returns_503(monkeypatch):
     from reddit_client import RedditFetchError
 

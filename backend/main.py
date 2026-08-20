@@ -21,6 +21,19 @@ app.add_middleware(
 )
 
 
+@app.middleware("http")
+async def no_store_cache_control(request, call_next):
+    # Hosts like Render sit behind a CDN (Cloudflare) that can cache a
+    # response from a single unlucky request — e.g. a 404 hit during the
+    # container's first few seconds of cold-start — and then keep serving
+    # that stale response to every subsequent visitor indefinitely. This is
+    # a small app with no real caching upside, so it's simplest to just tell
+    # every intermediary never to cache anything, for every path.
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.get("/api/suggestions", response_model=SuggestionsResponse)
 def suggestions(refresh: bool = Query(False, description="Bypass cache and re-fetch from Reddit")):
     try:
