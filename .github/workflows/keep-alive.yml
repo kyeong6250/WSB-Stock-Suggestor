@@ -1,0 +1,19 @@
+name: Keep Render instance warm
+
+# Render's free tier spins the service down after 15 minutes with no
+# traffic, and the first request after that races the container's startup
+# (Render's own edge can return a bare 404 for a request that arrives before
+# the app is listening — see the "no-server" routing header). Pinging on an
+# interval shorter than the sleep timeout keeps it always warm, so real
+# visitors never hit that race.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: curl -fsS --max-time 30 https://wsb-stock-suggestor.onrender.com/api/health

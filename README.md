@@ -75,9 +75,17 @@ Click the badge above ("Deploy to Render"), or manually:
 2. On [Render](https://render.com), **New +** → **Blueprint** → connect this repo. Render reads [`render.yaml`](render.yaml) and sets everything up automatically (free tier, no credit card).
 3. Deploy. You'll get a public URL like `https://wsb-stock-suggestor.onrender.com`.
 
-Render's free tier spins the service down after 15 minutes of no traffic —
-the first request after that takes ~30-60s to wake back up, then it's normal
-speed. Fine for a portfolio link, not for anything that needs to always be instantly warm.
+Render's free tier spins the service down after 15 minutes of no traffic, and
+the first request after that can race the container's startup — Render's own
+edge sometimes returns a bare 404 for a request that lands before the app is
+actually listening (distinguishable by an `x-render-routing: no-server`
+response header; the request landing a moment later succeeds). [`.github/workflows/keep-alive.yml`](.github/workflows/keep-alive.yml)
+pings the service every 10 minutes to keep it always warm and sidestep this
+entirely — it only runs once you've deployed your own instance and pushed to
+your fork (GitHub Actions can't ping a URL that doesn't exist yet), and
+GitHub auto-disables scheduled workflows after 60 days with no commits to
+the repo, so an idle fork will eventually need a push (or `workflow_dispatch`
+from the Actions tab) to re-enable it.
 
 ## Desktop app (Windows .exe)
 
