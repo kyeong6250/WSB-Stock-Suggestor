@@ -5,7 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WSB Stock Suggestor</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f6fed' stroke-width='2.5'%3E%3Cpath d='M3 17l6-6 4 4 8-8'/%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="style.css" />
+  <script>
+    // Render's free tier occasionally drops a single request out of a
+    // concurrent batch during/after cold-start (an intermittent platform
+    // issue, not caching — confirmed via response headers). A <link>/<script>
+    // tag has no built-in retry, so style.css and app.js are loaded here
+    // instead of via static tags, with a few retries on failure.
+    function loadWithRetry(kind, url, attempt) {
+      attempt = attempt || 1;
+      var el = document.createElement(kind === "css" ? "link" : "script");
+      if (kind === "css") {
+        el.rel = "stylesheet";
+        el.href = url + "?r=" + attempt;
+      } else {
+        el.src = url + "?r=" + attempt;
+      }
+      el.onerror = function () {
+        if (attempt < 4) setTimeout(function () { loadWithRetry(kind, url, attempt + 1); }, 500 * attempt);
+      };
+      document.head.appendChild(el);
+    }
+    loadWithRetry("css", "style.css");
+  </script>
 </head>
 <body>
   <div class="app-shell">
@@ -113,6 +134,6 @@
     </main>
   </div>
 
-  <script src="app.js"></script>
+  <script>loadWithRetry("js", "app.js");</script>
 </body>
 </html>

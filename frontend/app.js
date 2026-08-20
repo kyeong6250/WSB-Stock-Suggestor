@@ -266,6 +266,33 @@ function render() {
     .join("");
 }
 
+const FETCH_MAX_ATTEMPTS = 3;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchSuggestionsWithRetry(forceRefresh) {
+  let lastErr;
+  for (let attempt = 1; attempt <= FETCH_MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/api/suggestions${forceRefresh ? "?refresh=true" : ""}`);
+      if (!res.ok) {
+        // A bare "Not Found" (no JSON body) here is very likely the hosting
+        // platform dropping this one request, not a real app-level error —
+        // worth a retry rather than surfacing it immediately.
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Request failed: ${res.status}`);
+      }
+      return await res.json();
+    } catch (err) {
+      lastErr = err;
+      if (attempt < FETCH_MAX_ATTEMPTS) await sleep(600 * attempt);
+    }
+  }
+  throw lastErr;
+}
+
 async function load(forceRefresh = false) {
   els.refresh.disabled = true;
   els.status.classList.remove("hidden", "error");
@@ -275,12 +302,7 @@ async function load(forceRefresh = false) {
   els.table.classList.add("hidden");
 
   try {
-    const res = await fetch(`${API_BASE}/api/suggestions${forceRefresh ? "?refresh=true" : ""}`);
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.detail || `Request failed: ${res.status}`);
-    }
-    state.data = await res.json();
+    state.data = await fetchSuggestionsWithRetry(forceRefresh);
     els.meta.textContent = `r/${state.data.subreddit} · ${state.data.posts_analyzed} posts analyzed · updated ${fmtTimeAgo(state.data.generated_at)}`;
     render();
   } catch (err) {
