@@ -22,6 +22,12 @@ class FlairCount(BaseModel):
     count: int
 
 
+class SentimentHistoryPoint(BaseModel):
+    timestamp: float
+    overall_sentiment: float
+    posts_analyzed: int
+
+
 class SuggestionsResponse(BaseModel):
     subreddit: str
     generated_at: float
@@ -29,6 +35,7 @@ class SuggestionsResponse(BaseModel):
     overall_sentiment: float
     high_quality_post_pct: float
     flair_breakdown: list[FlairCount]
+    sentiment_history: list[SentimentHistoryPoint]
     bullish: list[TickerSuggestion]
     bearish: list[TickerSuggestion]
     all: list[TickerSuggestion]

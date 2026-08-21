@@ -28,6 +28,7 @@ def _fake_posts():
 def setup_function():
     aggregator._cache = None
     aggregator._cache_time = 0.0
+    aggregator._history = []
 
 
 def test_health():

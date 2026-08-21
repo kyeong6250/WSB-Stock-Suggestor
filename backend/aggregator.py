@@ -1,10 +1,11 @@
 import math
+import threading
 import time
 from dataclasses import dataclass, field
 
 from config import settings
 from data_source import fetch_posts
-from models import FlairCount, SamplePost, SuggestionsResponse, TickerSuggestion
+from models import FlairCount, SamplePost, SentimentHistoryPoint, SuggestionsResponse, TickerSuggestion
 from sentiment import compound_score
 from ticker_extractor import company_name, extract_tickers
 
@@ -139,6 +140,7 @@ def _build_suggestions(posts: list[dict]) -> SuggestionsResponse:
         overall_sentiment=overall_sentiment,
         high_quality_post_pct=_high_quality_post_pct(posts),
         flair_breakdown=_flair_breakdown(posts),
+        sentiment_history=[],  # filled in by get_suggestions once this fetch is recorded
         bullish=bullish[:25],
         bearish=bearish[:25],
         all=all_sorted[:100],
@@ -147,18 +149,52 @@ def _build_suggestions(posts: list[dict]) -> SuggestionsResponse:
 
 _cache: SuggestionsResponse | None = None
 _cache_time: float = 0.0
+# Every real fetch (not a cache hit) adds one point here, so the dashboard
+# can show a sentiment trend even though cache_ttl_seconds now defaults to
+# 24h — without this, "keeping data around longer" would otherwise mean the
+# dashboard just looks frozen all day between refreshes.
+_history: list[SentimentHistoryPoint] = []
+
+
+def _record_history(result: SuggestionsResponse) -> list[SentimentHistoryPoint]:
+    global _history
+    _history = [
+        *_history,
+        SentimentHistoryPoint(
+            timestamp=result.generated_at,
+            overall_sentiment=result.overall_sentiment,
+            posts_analyzed=result.posts_analyzed,
+        ),
+    ][-settings.sentiment_history_max_points :]
+    return _history
+
+
+_fetch_lock = threading.Lock()
+
+
+def _cache_is_fresh() -> bool:
+    return _cache is not None and (time.time() - _cache_time) < settings.cache_ttl_seconds
 
 
 def get_suggestions(force_refresh: bool = False) -> SuggestionsResponse:
     global _cache, _cache_time
 
-    now = time.time()
-    if not force_refresh and _cache is not None and (now - _cache_time) < settings.cache_ttl_seconds:
+    if not force_refresh and _cache_is_fresh():
         return _cache
 
-    posts = fetch_posts()
-    result = _build_suggestions(posts)
+    # Without this lock, two callers racing a cache miss at the same moment
+    # (e.g. the background-refresh thread's startup fetch and a request
+    # landing before it finishes) each independently fetch and append their
+    # own near-duplicate history point instead of one of them just waiting
+    # for the other's result.
+    with _fetch_lock:
+        if not force_refresh and _cache_is_fresh():
+            return _cache
 
-    _cache = result
-    _cache_time = now
-    return result
+        posts = fetch_posts()
+        result = _build_suggestions(posts)
+        result.sentiment_history = _record_history(result)
+
+        _cache = result
+        _cache_time = time.time()
+        return result

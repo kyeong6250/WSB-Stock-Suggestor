@@ -1,4 +1,9 @@
-from aggregator import _build_suggestions, _post_weight
+import threading
+import time
+
+import aggregator
+from aggregator import _build_suggestions, _post_weight, get_suggestions
+from config import settings
 
 
 def _post(post_id, title, score, blobs, flair=None):
@@ -112,3 +117,73 @@ def test_meme_flaired_post_pulls_score_toward_its_sentiment_less():
     result = _build_suggestions(posts_with_meme)
     aapl = next(t for t in result.all if t.ticker == "AAPL")
     assert aapl.avg_sentiment > 0
+
+
+def _reset_aggregator_state(monkeypatch):
+    monkeypatch.setattr(aggregator, "_cache", None)
+    monkeypatch.setattr(aggregator, "_cache_time", 0.0)
+    monkeypatch.setattr(aggregator, "_history", [])
+
+
+def test_get_suggestions_records_one_history_point_per_real_fetch(monkeypatch):
+    _reset_aggregator_state(monkeypatch)
+    monkeypatch.setattr(settings, "cache_ttl_seconds", 0)  # every call is a real fetch
+    monkeypatch.setattr(aggregator, "fetch_posts", lambda: [_post("1", "a", 10, ["GME bullish"])])
+
+    r1 = get_suggestions()
+    r2 = get_suggestions()
+
+    assert len(r1.sentiment_history) == 1
+    assert len(r2.sentiment_history) == 2
+
+
+def test_get_suggestions_cache_hit_does_not_add_history_point(monkeypatch):
+    _reset_aggregator_state(monkeypatch)
+    monkeypatch.setattr(settings, "cache_ttl_seconds", 86400)
+    monkeypatch.setattr(aggregator, "fetch_posts", lambda: [_post("1", "a", 10, ["GME bullish"])])
+
+    r1 = get_suggestions()
+    r2 = get_suggestions()  # within cache_ttl_seconds, should be the cached object
+
+    assert len(r1.sentiment_history) == 1
+    assert len(r2.sentiment_history) == 1
+
+
+def test_history_is_capped_at_configured_max_points(monkeypatch):
+    _reset_aggregator_state(monkeypatch)
+    monkeypatch.setattr(settings, "cache_ttl_seconds", 0)
+    monkeypatch.setattr(settings, "sentiment_history_max_points", 3)
+    monkeypatch.setattr(aggregator, "fetch_posts", lambda: [_post("1", "a", 10, ["GME bullish"])])
+
+    for _ in range(5):
+        result = get_suggestions()
+
+    assert len(result.sentiment_history) == 3
+
+
+def test_concurrent_cache_misses_only_fetch_once(monkeypatch):
+    # Reproduces a real bug caught by running the packaged app: the
+    # background-refresh thread's startup fetch and a request landing before
+    # it finished each independently fetched and appended their own
+    # near-duplicate history point. fetch_posts is made artificially slow so
+    # both threads are guaranteed to be mid-race, not just racing by luck.
+    _reset_aggregator_state(monkeypatch)
+    monkeypatch.setattr(settings, "cache_ttl_seconds", 86400)
+    fetch_count = {"n": 0}
+
+    def slow_fetch_posts():
+        fetch_count["n"] += 1
+        time.sleep(0.2)
+        return [_post("1", "a", 10, ["GME bullish"])]
+
+    monkeypatch.setattr(aggregator, "fetch_posts", slow_fetch_posts)
+
+    results = []
+    threads = [threading.Thread(target=lambda: results.append(get_suggestions())) for _ in range(5)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=5)
+
+    assert fetch_count["n"] == 1
+    assert all(len(r.sentiment_history) == 1 for r in results)

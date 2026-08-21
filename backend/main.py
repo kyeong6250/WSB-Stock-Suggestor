@@ -1,17 +1,43 @@
 import logging
+import threading
+import time
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from aggregator import get_suggestions
+from config import settings
 from errors import RedditFetchError
 from models import SuggestionsResponse
 from runtime_paths import FRONTEND_DIR
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-app = FastAPI(title="WSB Stock Suggestor", version="0.1.0")
+
+def _background_refresh_loop() -> None:
+    # Proactively keeps the cache (and sentiment_history) warm on a fixed
+    # interval, independent of traffic — with cache_ttl_seconds now defaulting
+    # to 24h, relying on lazy on-request refreshing alone would mean the
+    # history sparkline barely accumulates points and an unlucky first
+    # visitor could eat a ~15s synchronous fetch.
+    while True:
+        try:
+            get_suggestions(force_refresh=True)
+        except RedditFetchError:
+            logger.warning("Background refresh failed, will retry next interval", exc_info=True)
+        time.sleep(settings.background_refresh_interval_seconds)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    threading.Thread(target=_background_refresh_loop, daemon=True).start()
+    yield
+
+
+app = FastAPI(title="WSB Stock Suggestor", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

@@ -129,6 +129,34 @@ function renderChart() {
     </svg>`;
 }
 
+const SPARKLINE_WIDTH = 120;
+const SPARKLINE_HEIGHT = 28;
+
+function renderSparkline(history, isPositive) {
+  if (!history || history.length < 2) return "";
+
+  const values = history.map((h) => h.overall_sentiment);
+  const min = Math.min(...values, 0);
+  const max = Math.max(...values, 0);
+  const range = max - min || 1;
+
+  const points = values
+    .map((v, i) => {
+      const x = (i / (values.length - 1)) * SPARKLINE_WIDTH;
+      const y = SPARKLINE_HEIGHT - ((v - min) / range) * SPARKLINE_HEIGHT;
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    })
+    .join(" ");
+  const zeroY = SPARKLINE_HEIGHT - ((0 - min) / range) * SPARKLINE_HEIGHT;
+  const color = isPositive ? "var(--bull)" : "var(--bear)";
+
+  return `
+    <svg class="sparkline" viewBox="0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}" width="${SPARKLINE_WIDTH}" height="${SPARKLINE_HEIGHT}" role="img" aria-label="Overall sentiment trend over recent refreshes">
+      <line x1="0" y1="${zeroY.toFixed(1)}" x2="${SPARKLINE_WIDTH}" y2="${zeroY.toFixed(1)}" class="sparkline-zero" />
+      <polyline points="${points}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />
+    </svg>`;
+}
+
 function renderStats() {
   const d = state.data;
   const topBull = d.bullish[0];
@@ -143,6 +171,7 @@ function renderStats() {
       value: fmtSentiment(overall),
       sub: sentimentBucketLabel(overall),
       cls: overall > 0.08 ? "bull" : overall < -0.08 ? "bear" : "",
+      extra: renderSparkline(d.sentiment_history, overall >= 0),
     },
     {
       label: "High-Signal Posts",
@@ -170,6 +199,7 @@ function renderStats() {
           <div class="stat-label">${c.label}</div>
           <div class="stat-value ${c.cls || ""}">${c.value}</div>
           ${c.sub ? `<div class="stat-sub">${c.sub}</div>` : ""}
+          ${c.extra || ""}
         </div>`
     )
     .join("");

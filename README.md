@@ -23,7 +23,7 @@ See [Data sources](#data-sources) for why and how.
    - **`$TICKER` cashtags** are explicit intent, so they're checked against the full ~5,700-symbol NASDAQ/NYSE/AMEX common-stock universe — this is what catches small/micro-caps outside the trusted list.
 3. **Score sentiment** — runs VADER sentiment analysis, extended with a WSB slang/emoji lexicon (🚀, 💎🙌, "bagholder", "tendies", "diamond hands", etc.).
 4. **Aggregate** — combines mention count and a weighted average sentiment per ticker into a single score, ranked into Bullish / Bearish / All tabs. Weighting favors higher-upvoted posts (log-dampened) and analysis-flaired posts ("DD", "Discussion", "Fundamentals"), while down-weighting high-noise flairs ("Meme", "Shitpost").
-5. Results are cached for `CACHE_TTL_SECONDS` (default 15 min).
+5. Results refresh proactively every `BACKGROUND_REFRESH_INTERVAL_SECONDS` (default 30 min) in the background, independent of traffic — each refresh also adds a point to an "Overall Sentiment" trend sparkline (kept in memory, last `SENTIMENT_HISTORY_MAX_POINTS`). `CACHE_TTL_SECONDS` (default 24h) is a fallback ceiling on staleness, not the primary freshness mechanism.
 
 ## Data sources
 
@@ -148,9 +148,11 @@ Create a `.env` (`cp .env.example .env`) to override any of these — none are r
 - `ARCTIC_SHIFT_WINDOW_HOURS` — `arctic_shift` only: how many hours back to pull posts from.
 - `ARCTIC_SHIFT_MAX_COMMENT_FETCHES` — `arctic_shift` only: how many of the highest-scoring posts to fetch comments for. Comment-fetching costs one HTTP request per post (no batch endpoint), so this bounds refresh time regardless of `POST_LIMIT` — with defaults, a full refresh takes single-digit seconds.
 - `POST_LISTING` — `praw` only: `hot`, `new`, `top`, or `rising`. Comma-separate several (e.g. `hot,rising`, the default) to merge them, deduplicated — `hot` alone skews toward posts that have been popular for a while, so mixing in `rising` keeps the ranking from leaning entirely on stale threads.
-- `POST_LIMIT` — how many posts to pull per refresh (per listing, for `praw`).
+- `POST_LIMIT` — how many posts to pull per refresh (per listing, for `praw`). Default (300) is generous enough to rarely truncate what's actually available.
 - `COMMENTS_PER_POST` — how many top-level comments to analyze per post (0 = titles/selftext only, faster).
-- `CACHE_TTL_SECONDS` — how long results are cached before re-fetching.
+- `BACKGROUND_REFRESH_INTERVAL_SECONDS` — how often to proactively refresh in the background; this is what actually drives freshness and grows the sentiment-history sparkline (default 30 min).
+- `CACHE_TTL_SECONDS` — fallback ceiling on staleness before a request is forced to block on a synchronous refetch (default 24h) — lower this if you'd rather requests self-refresh sooner without relying on the background interval.
+- `SENTIMENT_HISTORY_MAX_POINTS` — how many trend-sparkline points to keep before dropping the oldest (default 50).
 
 ## Disclaimer
 

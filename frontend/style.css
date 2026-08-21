@@ -216,6 +216,17 @@ body {
   margin-top: 3px;
 }
 
+.sparkline {
+  display: block;
+  margin-top: 8px;
+}
+
+.sparkline-zero {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
 /* ---------- Panels ---------- */
 
 .panel {

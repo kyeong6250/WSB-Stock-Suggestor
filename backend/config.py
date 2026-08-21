@@ -22,10 +22,24 @@ class Settings(BaseSettings):
     reddit_user_agent: str = "wsb-stock-suggestor"
 
     subreddit: str = "wallstreetbets"
-    post_limit: int = 150
+    # Generous enough that it rarely truncates what's actually available in
+    # arctic_shift_window_hours (typically ~150-250 posts/day for WSB) rather
+    # than acting as a real cap.
+    post_limit: int = 300
     post_listing: str = "hot,rising"
     comments_per_post: int = 15
-    cache_ttl_seconds: int = 900
+    # Ceiling on how stale served data is allowed to get before a request is
+    # forced to block on a synchronous refetch. In practice this is rarely
+    # hit — background_refresh_interval_seconds keeps the cache warm well
+    # under this — it's a fallback, not the primary freshness mechanism.
+    cache_ttl_seconds: int = 86400
+    # How often to proactively refresh in the background (independent of any
+    # request), so: (a) visitors almost always hit an already-warm cache
+    # instead of occasionally eating a ~15s synchronous fetch, and (b) the
+    # sentiment-history sparkline actually accumulates points over time
+    # rather than only advancing when a cache miss happens to occur.
+    background_refresh_interval_seconds: int = 1800
+    sentiment_history_max_points: int = 50
 
 
 settings = Settings()
